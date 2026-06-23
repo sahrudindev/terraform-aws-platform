@@ -1,0 +1,26 @@
+# Terraform state — JANGAN PERNAH di-commit (berisi data sensitif)
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Direktori kerja & cache provider
+.terraform/
+.terraform.lock.hcl
+
+# Variabel berisi rahasia / nilai spesifik
+*.tfvars
+*.auto.tfvars
+!example.tfvars
+
+# Artefak build Lambda (dihasilkan otomatis)
+**/build/
+*.zip
+
+# Crash log & rencana yang disimpan
+crash.log
+crash.*.log
+*.tfplan
+
+# Kredensial
+.aws/
+*.pem
