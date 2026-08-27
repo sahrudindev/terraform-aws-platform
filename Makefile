@@ -13,7 +13,7 @@ export AWS_PROFILE
 APPROVE := $(if $(AUTO_APPROVE),-auto-approve,)
 MODULES := $(wildcard modules/*/)
 
-.PHONY: help bootstrap fmt validate lint test security docs check clean
+.PHONY: help bootstrap fmt validate lint test security docs check clean destroy unplug
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -74,6 +74,20 @@ docs: ## Regenerate the input/output tables in each module README
 	@for d in $(MODULES); do terraform-docs markdown table --output-file README.md --output-mode inject "$$d"; done
 
 check: fmt validate lint test ## Everything a PR must pass
+
+unplug: ## Revoke CI's access to AWS without touching any infrastructure
+	@echo "Destroying the global stack removes the OIDC provider and both CI"
+	@echo "roles. Infrastructure keeps running; GitHub simply loses its way in."
+	cd global && terraform destroy
+
+destroy: ## Tear everything down, in the order that works
+	@echo "Order matters: bootstrap holds the state for every other stack, so it"
+	@echo "goes last. See docs/TEARDOWN.md for what will not go quietly."
+	@set -euo pipefail; \
+	for d in environments/dev environments/prod global bootstrap; do \
+	  echo "--> destroying $$d"; \
+	  terraform -chdir=$$d destroy || { echo "!! stopped at $$d - see docs/TEARDOWN.md"; exit 1; }; \
+	done
 
 clean: ## Remove local Terraform working directories
 	find . -type d -name .terraform -prune -exec rm -rf {} +
