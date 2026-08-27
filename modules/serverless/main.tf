@@ -37,6 +37,7 @@ resource "aws_iam_role_policy_attachment" "logs" {
 resource "aws_cloudwatch_log_group" "lambda" {
   name              = "/aws/lambda/${local.name}"
   retention_in_days = var.log_retention_days
+  kms_key_id        = var.kms_key_arn
 }
 
 resource "aws_lambda_function" "this" {
@@ -48,6 +49,17 @@ resource "aws_lambda_function" "this" {
   source_code_hash = data.archive_file.lambda.output_base64sha256
   timeout          = var.timeout
   memory_size      = var.memory_size
+
+  reserved_concurrent_executions = var.reserved_concurrent_executions
+  kms_key_arn                    = var.kms_key_arn
+
+  tracing_config {
+    mode = var.tracing_mode
+  }
+
+  dead_letter_config {
+    target_arn = aws_sqs_queue.dlq.arn
+  }
 
   environment {
     variables = var.environment_variables

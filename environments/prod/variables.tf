@@ -19,6 +19,18 @@ variable "vpc_cidr" {
   default = "10.20.0.0/16" # prod memakai rentang 10.20.x (beda dari dev)
 }
 
+variable "enable_nat_gateway" {
+  type        = bool
+  description = "Create NAT Gateways (~$32/month each). Required for private-subnet workloads."
+  default     = true
+}
+
+variable "single_nat_gateway" {
+  type        = bool
+  description = "true = one shared NAT (cheap). false = one NAT per AZ (highly available)."
+  default     = false
+}
+
 # --- Feature flags ----------------------------------------------------------
 variable "enable_database" {
   type    = bool

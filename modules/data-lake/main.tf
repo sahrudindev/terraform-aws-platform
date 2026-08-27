@@ -27,8 +27,8 @@ resource "aws_s3_bucket" "this" {
 }
 
 resource "aws_s3_bucket_public_access_block" "this" {
-  for_each                = aws_s3_bucket.this
-  bucket                  = each.value.id
+  for_each                = local.buckets
+  bucket                  = aws_s3_bucket.this[each.key].id
   block_public_acls       = true
   block_public_policy     = true
   ignore_public_acls      = true
@@ -36,12 +36,15 @@ resource "aws_s3_bucket_public_access_block" "this" {
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
-  for_each = aws_s3_bucket.this
-  bucket   = each.value.id
+  for_each = local.buckets
+  bucket   = aws_s3_bucket.this[each.key].id
   rule {
     apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = local.kms_key_arn
     }
+    # Cuts KMS request cost dramatically for many small objects.
+    bucket_key_enabled = true
   }
 }
 
@@ -58,6 +61,11 @@ resource "aws_athena_workgroup" "this" {
     enforce_workgroup_configuration = true
     result_configuration {
       output_location = "s3://${aws_s3_bucket.this["athena_results"].bucket}/output/"
+
+      encryption_configuration {
+        encryption_option = "SSE_KMS"
+        kms_key_arn       = local.kms_key_arn
+      }
     }
   }
 

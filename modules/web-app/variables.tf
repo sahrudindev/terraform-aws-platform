@@ -41,3 +41,50 @@ variable "log_retention_days" {
   type    = number
   default = 14
 }
+
+variable "enable_deletion_protection" {
+  type        = bool
+  description = "Block accidental deletion of the load balancer. Should be true in prod."
+  default     = false
+}
+
+variable "enable_access_logs" {
+  type        = bool
+  description = "Write ALB access logs to a dedicated S3 bucket."
+  default     = true
+}
+
+variable "access_logs_retention_days" {
+  type        = number
+  description = "How long ALB access logs are kept."
+  default     = 90
+}
+
+variable "min_capacity" {
+  type        = number
+  description = "Lower bound for service auto scaling."
+  default     = 1
+}
+
+variable "max_capacity" {
+  type        = number
+  description = "Upper bound for service auto scaling. Also caps runaway cost."
+  default     = 4
+}
+
+variable "target_cpu_utilization" {
+  type        = number
+  description = "Average CPU percentage the scaler aims to hold."
+  default     = 70
+}
+
+variable "vpc_cidr" {
+  type        = string
+  description = "CIDR of the VPC, used to scope ALB egress to the private subnets."
+}
+
+variable "kms_key_arn" {
+  type        = string
+  description = "CMK used to encrypt the task log group."
+  default     = null
+}

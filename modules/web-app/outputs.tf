@@ -19,3 +19,8 @@ output "service_security_group_id" {
   description = "SG service ECS — berikan ke module database agar app boleh konek DB"
   value       = aws_security_group.service.id
 }
+
+output "access_logs_bucket" {
+  description = "Bucket receiving ALB access logs, if enabled"
+  value       = var.enable_access_logs ? aws_s3_bucket.logs[0].bucket : null
+}

@@ -34,7 +34,7 @@ resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.this.id
   cidr_block              = local.public_subnets[count.index]
   availability_zone       = local.azs[count.index]
-  map_public_ip_on_launch = true
+  map_public_ip_on_launch = var.map_public_ip_on_launch
   tags = {
     Name                     = "${local.name}-public-${count.index + 1}"
     Tier                     = "public"
@@ -105,4 +105,17 @@ resource "aws_route_table_association" "private" {
   count          = var.az_count
   subnet_id      = aws_subnet.private[count.index].id
   route_table_id = aws_route_table.private[count.index].id
+}
+
+# --- Default security group -------------------------------------------------
+#
+# Every VPC ships with a default security group that allows all traffic between
+# its members. Nothing here uses it, so it is explicitly emptied rather than
+# left as a quiet way around the rules above.
+resource "aws_default_security_group" "this" {
+  vpc_id = aws_vpc.this.id
+
+  # No ingress and no egress blocks: both are revoked.
+
+  tags = { Name = "${local.name}-default-sg-locked" }
 }

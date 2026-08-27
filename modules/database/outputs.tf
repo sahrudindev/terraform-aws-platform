@@ -24,3 +24,8 @@ output "master_secret_arn" {
   description = "ARN secret di Secrets Manager berisi kredensial DB"
   value       = aws_db_instance.this.master_user_secret[0].secret_arn
 }
+
+output "monitoring_role_arn" {
+  description = "Role RDS uses to publish enhanced monitoring metrics"
+  value       = var.monitoring_interval > 0 ? aws_iam_role.monitoring[0].arn : null
+}

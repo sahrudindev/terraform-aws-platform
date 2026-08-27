@@ -34,13 +34,26 @@ resource "aws_eks_cluster" "this" {
   role_arn = aws_iam_role.cluster.arn
   version  = var.kubernetes_version
 
+  enabled_cluster_log_types = var.enabled_cluster_log_types
+
   vpc_config {
     subnet_ids              = concat(var.private_subnet_ids, var.public_subnet_ids)
     endpoint_private_access = true
     endpoint_public_access  = var.endpoint_public_access
+    public_access_cidrs     = var.endpoint_public_access ? var.public_access_cidrs : null
   }
 
-  depends_on = [aws_iam_role_policy_attachment.cluster]
+  encryption_config {
+    provider {
+      key_arn = aws_kms_key.this.arn
+    }
+    resources = ["secrets"]
+  }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.cluster,
+    aws_cloudwatch_log_group.cluster,
+  ]
 }
 
 # --- IAM role untuk worker nodes -------------------------------------------

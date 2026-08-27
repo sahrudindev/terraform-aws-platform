@@ -10,3 +10,8 @@ output "function_name" {
 output "function_arn" {
   value = aws_lambda_function.this.arn
 }
+
+output "dlq_url" {
+  description = "Dead-letter queue holding invocations that exhausted their retries"
+  value       = aws_sqs_queue.dlq.url
+}

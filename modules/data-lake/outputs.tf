@@ -17,3 +17,8 @@ output "glue_database" {
 output "athena_workgroup" {
   value = aws_athena_workgroup.this.name
 }
+
+output "kms_key_arn" {
+  description = "Key encrypting the lake. Grant consumers kms:Decrypt on this."
+  value       = local.kms_key_arn
+}

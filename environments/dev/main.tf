@@ -3,6 +3,19 @@
 # di terraform.tfvars. Networking selalu aktif sebagai fondasi.
 # ============================================================================
 
+module "kms" {
+  source = "../../modules/kms"
+
+  project     = var.project
+  environment = var.environment
+  description = "Shared key for logs, storage and secrets"
+
+  service_principals = [
+    "logs.${var.region}.amazonaws.com",
+    "s3.amazonaws.com",
+  ]
+}
+
 module "networking" {
   source = "../../modules/networking"
 
@@ -12,6 +25,7 @@ module "networking" {
   az_count           = 2
   single_nat_gateway = true # dev: 1 NAT saja untuk hemat
   enable_nat_gateway = var.enable_nat_gateway
+  kms_key_arn        = module.kms.key_arn
 }
 
 module "web_app" {
@@ -21,9 +35,11 @@ module "web_app" {
   project            = var.project
   environment        = var.environment
   vpc_id             = module.networking.vpc_id
+  vpc_cidr           = module.networking.vpc_cidr
   public_subnet_ids  = module.networking.public_subnet_ids
   private_subnet_ids = module.networking.private_subnet_ids
   desired_count      = 1
+  kms_key_arn        = module.kms.key_arn
 }
 
 module "database" {
@@ -41,6 +57,7 @@ module "database" {
 
   # Izinkan web-app konek ke DB jika web-app aktif
   allowed_security_group_ids = var.enable_web_app ? [module.web_app[0].service_security_group_id] : []
+  kms_key_arn                = module.kms.key_arn
 }
 
 module "serverless" {
@@ -49,6 +66,7 @@ module "serverless" {
 
   project     = var.project
   environment = var.environment
+  kms_key_arn = module.kms.key_arn
 }
 
 module "eks" {
@@ -62,6 +80,7 @@ module "eks" {
   desired_size       = 1 # dev: kecil
   min_size           = 1
   max_size           = 2
+  kms_key_arn        = module.kms.key_arn
 }
 
 module "data_lake" {
@@ -71,4 +90,5 @@ module "data_lake" {
   project       = var.project
   environment   = var.environment
   force_destroy = true # dev: boleh dihapus walau ada data
+  kms_key_arn   = module.kms.key_arn
 }
