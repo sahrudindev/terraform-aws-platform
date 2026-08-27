@@ -22,7 +22,28 @@ resource "aws_iam_openid_connect_provider" "github" {
 }
 
 locals {
-  repo = "${var.github_owner}/${var.github_repo}"
+  # GitHub issues the OIDC subject claim in one of two shapes.
+  #
+  #   classic   : repo:<owner>/<repo>
+  #   immutable : repo:<owner>@<owner_id>/<repo>@<repo_id>
+  #
+  # The immutable form embeds numeric ids so that renaming an account or a
+  # repository does not quietly hand this trust to whoever claims the freed
+  # name. It is what this account issues, and it is the safer of the two, so it
+  # is what this configuration targets when the ids are supplied.
+  #
+  # Check which form an account uses:
+  #   gh api repos/<owner>/<repo>/actions/oidc/customization/sub
+  #
+  # A trust policy written against the wrong shape does not warn. It denies
+  # every assume-role with "Not authorized to perform
+  # sts:AssumeRoleWithWebIdentity", which reads like a permissions problem.
+  use_immutable_subject = var.github_owner_id != null && var.github_repo_id != null
+
+  subject_prefix = (local.use_immutable_subject
+    ? "repo:${var.github_owner}@${var.github_owner_id}/${var.github_repo}@${var.github_repo_id}"
+    : "repo:${var.github_owner}/${var.github_repo}"
+  )
 }
 
 # --- Trust policies ---------------------------------------------------------
@@ -48,7 +69,7 @@ data "aws_iam_policy_document" "plan_assume" {
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${local.repo}:*"]
+      values   = ["${local.subject_prefix}:*"]
     }
   }
 }
@@ -75,9 +96,9 @@ data "aws_iam_policy_document" "apply_assume" {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
       values = [
-        "repo:${local.repo}:ref:refs/heads/main",
-        "repo:${local.repo}:environment:dev",
-        "repo:${local.repo}:environment:prod",
+        "${local.subject_prefix}:ref:refs/heads/main",
+        "${local.subject_prefix}:environment:dev",
+        "${local.subject_prefix}:environment:prod",
       ]
     }
   }
