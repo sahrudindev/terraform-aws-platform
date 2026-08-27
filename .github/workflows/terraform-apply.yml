@@ -75,4 +75,8 @@ jobs:
 
       - name: terraform apply
         working-directory: environments/${{ github.event.inputs.environment || 'dev' }}
+        env:
+          # Surfaced by the demo endpoint so a reader can tie the running
+          # deployment back to a commit in this repository.
+          TF_VAR_git_commit: ${{ github.sha }}
         run: terraform apply -input=false -auto-approve

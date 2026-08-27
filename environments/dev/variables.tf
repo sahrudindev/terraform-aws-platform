@@ -45,9 +45,13 @@ variable "enable_web_app" {
   type    = bool
   default = false
 }
+# The one workload left on in dev. Lambda and API Gateway sit inside the free
+# tier at portfolio traffic, so this can stay up permanently and give the README
+# a URL a reader can actually click. Everything below it still costs money while
+# idle and stays off.
 variable "enable_serverless" {
   type    = bool
-  default = false
+  default = true
 }
 variable "enable_eks" {
   type    = bool
@@ -62,4 +66,10 @@ variable "enable_data_lake" {
 variable "db_instance_class" {
   type    = string
   default = "db.t4g.micro"
+}
+
+variable "git_commit" {
+  type        = string
+  description = "Commit this environment was deployed from. CI passes TF_VAR_git_commit; locally it stays \"local\"."
+  default     = "local"
 }
