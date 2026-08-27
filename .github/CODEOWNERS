@@ -1,0 +1,7 @@
+# Every change needs a review from the repository owner.
+*                       @sahrudindev
+
+# Changes that widen blast radius get extra attention.
+/global/                @sahrudindev
+/.github/workflows/     @sahrudindev
+/environments/prod/     @sahrudindev

@@ -1,0 +1,62 @@
+name: terraform apply
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "**.tf"
+      - "**.tfvars"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to apply
+        required: true
+        default: dev
+        type: choice
+        options: [dev, prod]
+
+permissions:
+  id-token: write
+  contents: read
+
+# Never let two applies touch the same state at once.
+concurrency:
+  group: terraform-apply-${{ github.event.inputs.environment || 'dev' }}
+  cancel-in-progress: false
+
+env:
+  TF_VERSION: "1.16.0"
+  AWS_REGION: ap-southeast-1
+
+jobs:
+  apply:
+    name: apply (${{ github.event.inputs.environment || 'dev' }})
+    runs-on: ubuntu-latest
+    # The GitHub Environment carries a required-reviewer rule, so an apply
+    # pauses here until a human approves it.
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Assume apply role via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_APPLY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gha-apply-${{ github.run_id }}
+
+      - name: Write backend config
+        working-directory: environments/${{ github.event.inputs.environment || 'dev' }}
+        run: echo 'bucket = "${{ vars.AWS_STATE_BUCKET }}"' > backend.hcl
+
+      - name: terraform init
+        working-directory: environments/${{ github.event.inputs.environment || 'dev' }}
+        run: terraform init -backend-config=backend.hcl -input=false
+
+      - name: terraform apply
+        working-directory: environments/${{ github.event.inputs.environment || 'dev' }}
+        run: terraform apply -input=false -auto-approve

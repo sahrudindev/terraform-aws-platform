@@ -1,0 +1,175 @@
+name: terraform plan
+
+on:
+  pull_request:
+    paths:
+      - "**.tf"
+      - "**.tfvars"
+      - ".github/workflows/terraform-*.yml"
+
+# Short-lived credentials via OIDC. No AWS access keys are stored in GitHub.
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: terraform-plan-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TF_VERSION: "1.16.0"
+  AWS_REGION: ap-southeast-1
+
+jobs:
+  validate:
+    name: fmt / validate / lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: terraform fmt
+        run: terraform fmt -check -recursive -diff
+
+      - name: terraform validate
+        run: |
+          for dir in bootstrap global environments/dev environments/prod modules/*/; do
+            echo "::group::validate $dir"
+            terraform -chdir="$dir" init -backend=false -input=false
+            terraform -chdir="$dir" validate -no-color
+            echo "::endgroup::"
+          done
+
+      - uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: v0.64.0
+
+      - name: tflint
+        run: |
+          tflint --init
+          tflint --recursive --format compact
+
+  test:
+    name: terraform test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      # Module tests use mock_provider, so they need no AWS credentials and
+      # create nothing. They run before, and independently of, any plan.
+      - name: terraform test
+        run: |
+          set -euo pipefail
+          for dir in modules/*/; do
+            if compgen -G "$dir/tests/*.tftest.hcl" > /dev/null; then
+              echo "::group::test $dir"
+              terraform -chdir="$dir" init -input=false
+              terraform -chdir="$dir" test -no-color
+              echo "::endgroup::"
+            fi
+          done
+
+  plan:
+    name: plan (${{ matrix.env }})
+    needs: [validate, test]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        env: [dev, prod]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Assume read-only AWS role via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_PLAN_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gha-plan-${{ matrix.env }}-${{ github.run_id }}
+
+      - name: Write backend config
+        working-directory: environments/${{ matrix.env }}
+        run: echo 'bucket = "${{ vars.AWS_STATE_BUCKET }}"' > backend.hcl
+
+      - name: terraform init
+        working-directory: environments/${{ matrix.env }}
+        run: terraform init -backend-config=backend.hcl -input=false
+
+      - name: terraform plan
+        working-directory: environments/${{ matrix.env }}
+        # -lock=false: this role is read-only, and a pull-request plan must
+        # never block a concurrent apply on the same state.
+        run: |
+          set -o pipefail
+          terraform plan -input=false -no-color -lock=false -out=tfplan | tee plan.txt
+
+      - name: Comment plan on pull request
+        uses: actions/github-script@v7
+        if: always()
+        with:
+          script: |
+            const fs = require('fs');
+            const env = '${{ matrix.env }}';
+            let plan = '';
+            try {
+              plan = fs.readFileSync('environments/' + env + '/plan.txt', 'utf8');
+            } catch (e) {
+              plan = 'plan did not produce output - see the job log';
+            }
+            // GitHub caps comments at 65536 characters.
+            const max = 60000;
+            const body = plan.length > max
+              ? plan.slice(0, max) + '\n... truncated, see the full log in the job output'
+              : plan;
+
+            const marker = `<!-- terraform-plan-${env} -->`;
+            const comment = `${marker}\n### Terraform plan — \`${env}\`\n\n<details><summary>Show plan</summary>\n\n\`\`\`terraform\n${body}\n\`\`\`\n\n</details>`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                comment_id: existing.id, body: comment,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: context.issue.number, body: comment,
+              });
+            }
+
+  cost:
+    name: cost estimate
+    needs: validate
+    runs-on: ubuntu-latest
+    if: ${{ vars.INFRACOST_ENABLED == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: infracost/actions/setup@v3
+        with:
+          api-key: ${{ secrets.INFRACOST_API_KEY }}
+      - name: Infracost diff
+        run: |
+          infracost breakdown --path environments/dev --format json --out-file /tmp/dev.json
+          infracost output --path /tmp/dev.json --format github-comment --out-file /tmp/comment.md
+      - uses: infracost/actions/comment@v3
+        with:
+          path: /tmp/comment.md
+          behavior: update
