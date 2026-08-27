@@ -242,13 +242,18 @@ data "aws_iam_policy_document" "apply_iam" {
     condition {
       test     = "StringEquals"
       variable = "iam:PassedToService"
+      # Every service this repository hands a role to. A service missing from
+      # this list fails at apply with UnauthorizedOperation on iam:PassRole,
+      # which is the intended behaviour - the list is the audit trail.
       values = [
         "ecs-tasks.amazonaws.com",
         "lambda.amazonaws.com",
         "eks.amazonaws.com",
         "ec2.amazonaws.com",
         "rds.amazonaws.com",
+        "monitoring.rds.amazonaws.com", # RDS enhanced monitoring
         "glue.amazonaws.com",
+        "vpc-flow-logs.amazonaws.com", # VPC Flow Logs delivery
       ]
     }
   }
