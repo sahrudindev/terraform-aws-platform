@@ -22,7 +22,7 @@ module "networking" {
   project            = var.project
   environment        = var.environment
   vpc_cidr           = var.vpc_cidr
-  az_count           = 2
+  az_count           = var.az_count
   single_nat_gateway = true # dev: 1 NAT saja untuk hemat
   enable_nat_gateway = var.enable_nat_gateway
   kms_key_arn        = module.kms.key_arn

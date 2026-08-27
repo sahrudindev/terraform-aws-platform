@@ -3,6 +3,7 @@ project     = "cloudops"
 environment = "prod"
 region      = "ap-southeast-1"
 vpc_cidr    = "10.20.0.0/16"
+az_count    = 2
 
 # Production runs one NAT Gateway per AZ for availability.
 enable_nat_gateway = true
