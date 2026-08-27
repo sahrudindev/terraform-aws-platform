@@ -42,3 +42,15 @@ variable "state_kms_key_arn" {
   type        = string
   default     = null
 }
+
+variable "github_owner_id" {
+  description = "Numeric GitHub account id, from `gh api users/<owner> --jq .id`. Set together with github_repo_id when the account issues immutable OIDC subject claims."
+  type        = number
+  default     = null
+}
+
+variable "github_repo_id" {
+  description = "Numeric GitHub repository id, from `gh api repos/<owner>/<repo> --jq .id`."
+  type        = number
+  default     = null
+}

@@ -16,3 +16,8 @@ state_bucket = "cloudops-tfstate-<AWS_ACCOUNT_ID>"
 
 # From `terraform output state_kms_key_arn` in bootstrap/.
 state_kms_key_arn = "arn:aws:kms:ap-southeast-1:<AWS_ACCOUNT_ID>:key/<KEY_ID>"
+
+# Only needed when the account issues immutable OIDC subject claims. Check with:
+#   gh api repos/<owner>/<repo>/actions/oidc/customization/sub
+github_owner_id = 12345678
+github_repo_id  = 987654321
