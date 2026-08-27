@@ -1,6 +1,11 @@
 # ============================================================================
-# BOOTSTRAP — membuat backend untuk menyimpan Terraform state
-# Dijalankan SEKALI di awal. State bootstrap sendiri disimpan lokal.
+# BOOTSTRAP - the S3 bucket every other stack keeps its state in.
+#
+# Run once, with `make bootstrap`. The bucket is created with local state, then
+# this stack's own state is migrated into the bucket it just created. Circular,
+# and deliberate: afterwards no Terraform state exists on any workstation.
+#
+# See docs/adr/0005-bootstrapping-the-state-backend.md.
 # ============================================================================
 
 terraform {
