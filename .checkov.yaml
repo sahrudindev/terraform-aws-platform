@@ -1,0 +1,12 @@
+# Checkov configuration.
+#
+# Findings that are deliberately accepted are suppressed inline in the .tf file
+# with `#checkov:skip=<CHECK_ID>:<reason>` so the reason travels with the code.
+# This file only holds repo-wide settings.
+framework:
+  - terraform
+quiet: true
+compact: true
+download-external-modules: false
+skip-path:
+  - .terraform/
