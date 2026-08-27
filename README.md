@@ -147,6 +147,12 @@ Most of this stack is free or near-free when idle. These are the ones that are n
 An AWS Budget with alerts at 80% actual and 100% forecast is created by the
 `global` stack before any workload exists.
 
+Disabling GitHub Actions does not stop any of this billing — Actions only drives
+the changes. To stop the spend, remove the resources: see
+[`docs/TEARDOWN.md`](docs/TEARDOWN.md). `make unplug` revokes CI's access to AWS
+without touching infrastructure; `make destroy` removes everything in the order
+that works.
+
 ---
 
 ## Local development
@@ -183,6 +189,7 @@ docs/                   roadmap, learning guide, ADRs, scan reports
 
 | Document | |
 |---|---|
+| [`docs/TEARDOWN.md`](docs/TEARDOWN.md) | How to remove all of this, what keeps billing, and what refuses to be deleted |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Request flow, state layout, environment topology, blast radius |
 | [`docs/SETUP-AWS-ACCESS.md`](docs/SETUP-AWS-ACCESS.md) | Getting AWS credentials onto a workstation |
 | [`docs/SECURITY.md`](docs/SECURITY.md) | Scanning, baseline findings, accepted risks |
