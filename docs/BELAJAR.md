@@ -4,7 +4,7 @@
 > nol, dan menunjukkan **cara membuat hal yang sama secara manual** lewat AWS
 > Console — supaya Anda paham apa yang sebenarnya dilakukan Terraform di balik layar.
 >
-> Akun: `586723123091` · Region: `ap-southeast-1` (Singapore) · Project: `cloudops`
+> Akun: `123456789012` *(contoh — ganti dengan account id Anda)* · Region: `ap-southeast-1` (Singapore) · Project: `cloudops`
 
 ---
 
@@ -31,10 +31,10 @@
 Inilah seluruh yang sekarang **hidup di akun AWS Anda**, semuanya dikelola lewat Terraform:
 
 ```
-AWS Account 586723123091  (Region: ap-southeast-1)
+AWS Account 123456789012  (Region: ap-southeast-1)
 │
 ├── 🗄️  REMOTE STATE                                  ← fondasi Terraform
-│     ├── S3   : cloudops-tfstate-586723123091         (menyimpan state)
+│     ├── S3   : cloudops-tfstate-123456789012         (menyimpan state)
 │     └── DynamoDB : cloudops-tfstate-lock             (mengunci state)
 │
 ├── 💰  BUDGET GUARD                                   ← pengaman biaya
@@ -152,7 +152,7 @@ aws sts get-caller-identity   # cek "saya login sebagai siapa"
 **Cara Terraform:** folder [bootstrap/](../bootstrap/) — dijalankan sekali.
 File kunci: [bootstrap/main.tf](../bootstrap/main.tf)
 ```hcl
-resource "aws_s3_bucket" "state" { bucket = "cloudops-tfstate-586723123091" }
+resource "aws_s3_bucket" "state" { bucket = "cloudops-tfstate-123456789012" }
 resource "aws_s3_bucket_versioning" ...        # riwayat
 resource "aws_s3_bucket_server_side_encryption_configuration" ...  # enkripsi
 resource "aws_s3_bucket_public_access_block" ...  # tutup publik
@@ -163,7 +163,7 @@ resource "aws_dynamodb_table" "lock" { hash_key = "LockID" ... }
 
 *Bucket S3:*
 1. Console → **S3** → **Create bucket**.
-2. Nama: `cloudops-tfstate-586723123091`, Region: `ap-southeast-1`.
+2. Nama: `cloudops-tfstate-123456789012`, Region: `ap-southeast-1`.
 3. **Bucket Versioning** → Enable.
 4. **Default encryption** → SSE-S3 (Amazon S3 managed).
 5. **Block Public Access** → biarkan semua tercentang (ON).
@@ -179,7 +179,7 @@ resource "aws_dynamodb_table" "lock" { hash_key = "LockID" ... }
 Setelah itu, agar Terraform memakainya, isi blok backend ([dev/backend.tf](../environments/dev/backend.tf)):
 ```hcl
 backend "s3" {
-  bucket         = "cloudops-tfstate-586723123091"
+  bucket         = "cloudops-tfstate-123456789012"
   key            = "dev/terraform.tfstate"
   dynamodb_table = "cloudops-tfstate-lock"
 }
@@ -322,7 +322,7 @@ resource "aws_athena_workgroup" "this" { name = "cloudops-dev-wg" ... }
    CREATE EXTERNAL TABLE IF NOT EXISTS kontak (
      id int, nama string, kota string)
    ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
-   LOCATION 's3://cloudops-dev-datalake-raw-586723123091/contoh/'
+   LOCATION 's3://cloudops-dev-datalake-raw-123456789012/contoh/'
    TBLPROPERTIES ('skip.header.line.count'='1');
    ```
 3. Jalankan query:
