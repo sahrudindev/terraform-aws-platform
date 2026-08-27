@@ -14,6 +14,17 @@ variable "region" {
   default = "ap-southeast-1"
 }
 
+variable "az_count" {
+  type        = number
+  description = "How many availability zones to spread subnets across. Two is the minimum for an ALB; three costs an extra NAT in prod."
+  default     = 2
+
+  validation {
+    condition     = var.az_count >= 2 && var.az_count <= 4
+    error_message = "az_count must be between 2 and 4. An ALB requires at least two AZs, and the /16 CIDR maths stops working past four."
+  }
+}
+
 variable "vpc_cidr" {
   type    = string
   default = "10.20.0.0/16" # prod memakai rentang 10.20.x (beda dari dev)
