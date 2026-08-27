@@ -27,6 +27,7 @@ concurrency:
 env:
   TF_VERSION: "1.16.0"
   AWS_REGION: ap-southeast-1
+  TF_PLUGIN_CACHE_DIR: ${{ github.workspace }}/.terraform.d/plugin-cache
 
 jobs:
   apply:
@@ -45,6 +46,17 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Cache provider plugins
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.TF_PLUGIN_CACHE_DIR }}
+          key: tf-plugins-${{ runner.os }}-${{ hashFiles('**/.terraform.lock.hcl') }}
+          restore-keys: |
+            tf-plugins-${{ runner.os }}-
+
+      - name: Create the cache directory
+        run: mkdir -p "$TF_PLUGIN_CACHE_DIR"
 
       - name: Assume apply role via OIDC
         uses: aws-actions/configure-aws-credentials@v4
