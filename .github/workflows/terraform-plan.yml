@@ -20,6 +20,9 @@ concurrency:
 env:
   TF_VERSION: "1.16.0"
   AWS_REGION: ap-southeast-1
+  # Without a shared cache every `terraform init` downloads its own copy of the
+  # AWS provider - roughly 900 MB, eleven times over in the validate job alone.
+  TF_PLUGIN_CACHE_DIR: ${{ github.workspace }}/.terraform.d/plugin-cache
 
 jobs:
   validate:
@@ -31,6 +34,19 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
+
+      # Keyed on the lock files, so the cache is invalidated exactly when a
+      # provider version changes and never before.
+      - name: Cache provider plugins
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.TF_PLUGIN_CACHE_DIR }}
+          key: tf-plugins-${{ runner.os }}-${{ hashFiles('**/.terraform.lock.hcl') }}
+          restore-keys: |
+            tf-plugins-${{ runner.os }}-
+
+      - name: Create the cache directory
+        run: mkdir -p "$TF_PLUGIN_CACHE_DIR"
 
       - name: terraform fmt
         run: terraform fmt -check -recursive -diff
@@ -62,6 +78,19 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
+
+      # Keyed on the lock files, so the cache is invalidated exactly when a
+      # provider version changes and never before.
+      - name: Cache provider plugins
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.TF_PLUGIN_CACHE_DIR }}
+          key: tf-plugins-${{ runner.os }}-${{ hashFiles('**/.terraform.lock.hcl') }}
+          restore-keys: |
+            tf-plugins-${{ runner.os }}-
+
+      - name: Create the cache directory
+        run: mkdir -p "$TF_PLUGIN_CACHE_DIR"
 
       # Module tests use mock_provider, so they need no AWS credentials and
       # create nothing. They run before, and independently of, any plan.
@@ -96,6 +125,19 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
+
+      # Keyed on the lock files, so the cache is invalidated exactly when a
+      # provider version changes and never before.
+      - name: Cache provider plugins
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.TF_PLUGIN_CACHE_DIR }}
+          key: tf-plugins-${{ runner.os }}-${{ hashFiles('**/.terraform.lock.hcl') }}
+          restore-keys: |
+            tf-plugins-${{ runner.os }}-
+
+      - name: Create the cache directory
+        run: mkdir -p "$TF_PLUGIN_CACHE_DIR"
 
       - name: Assume read-only AWS role via OIDC
         uses: aws-actions/configure-aws-credentials@v4
