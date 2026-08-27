@@ -11,6 +11,49 @@ environments, reusable modules, remote state with native S3 locking, and a CI
 pipeline that authenticates to AWS through OIDC federation — no long-lived
 access keys anywhere in the repository or in GitHub secrets.
 
+### It is running right now
+
+**→ [https://7jgmrxxbvb.execute-api.ap-southeast-1.amazonaws.com/hello](https://7jgmrxxbvb.execute-api.ap-southeast-1.amazonaws.com/hello)**
+
+That endpoint reports the commit it was deployed from. Copy the SHA out of the
+response and find it in this repository's history — every claim below is
+checkable the same way.
+
+```json
+{
+  "message": "Provisioned by Terraform, deployed by GitHub Actions over OIDC.",
+  "environment": "dev",
+  "commit": "3caf5b649772e70c190e659b0017ad32aa1dd1c0",
+  "how_this_got_here": [
+    "pull request opened",
+    "fmt, validate, tflint, terraform test, checkov, trivy, gitleaks",
+    "terraform plan posted as a pull request comment",
+    "merged to main",
+    "apply paused for a human approval",
+    "role assumed via OIDC, credentials valid one hour",
+    "you are reading the result"
+  ]
+}
+```
+
+### What is worth looking at
+
+| | Where to check |
+|---|---|
+| **No long-lived AWS credentials exist.** CI federates through OIDC and holds one-hour credentials. The apply role is pinned to `refs/heads/main` and cannot create users or attach policies to itself. | [`global/github-oidc.tf`](global/github-oidc.tf) · [ADR-0002](docs/adr/0002-ci-iam-permissions.md) |
+| **Every pull request gets a `terraform plan` as a comment**, for both environments, before anyone can merge. | [PR #1](../../pull/1) · [`terraform-plan.yml`](.github/workflows/terraform-plan.yml) |
+| **Applies stop for a human.** The run pauses on a GitHub Environment until a reviewer approves it. | [`terraform-apply.yml`](.github/workflows/terraform-apply.yml) |
+| **Module tests need no AWS account.** 18 assertions on mocked providers — including three that prove `prod` is *rejected* without deletion protection, a final snapshot, and 7-day backups. | [`modules/database/tests/`](modules/database/tests/) |
+| **checkov: 494 passed, 0 failed, 86 suppressed** — and every suppression carries a written reason in the resource it applies to, not the word "accepted". | [`docs/SECURITY.md`](docs/SECURITY.md) |
+| **The teardown is documented too** — what keeps billing, in what order to destroy, and the three things that refuse to go quietly. | [`docs/TEARDOWN.md`](docs/TEARDOWN.md) |
+
+The CI pipeline failed six times before it went green. Each failure and its
+cause is in the commit history — a SARIF upload needing GitHub Advanced
+Security, trivy silently dropping its severity filter in SARIF mode, and an
+OIDC subject claim issued in GitHub's immutable form while the trust policy
+matched the classic one. Two of those failures turned out to be real defects in
+the infrastructure rather than in the pipeline.
+
 > 🇮🇩 A detailed walkthrough in Bahasa Indonesia, explaining every component and
 > how to build the same thing by hand in the AWS Console, lives in
 > [`docs/BELAJAR.md`](docs/BELAJAR.md).
