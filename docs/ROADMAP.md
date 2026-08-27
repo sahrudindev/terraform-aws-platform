@@ -16,20 +16,29 @@
 
 | Fase | Status | Catatan |
 |---|---|---|
-| 0 — Toolchain & AWS | ✅ selesai | Terraform 1.16.0 + tflint, checkov, trivy, terraform-docs, gitleaks, infracost di `~/.local/bin`. Profile `cloudops` aktif terhadap account produksi. |
-| 1 — Brownfield import | ⬜ tidak berlaku | Account target ternyata tidak memuat resource `cloudops` apa pun, jadi tidak ada yang perlu di-import. ADR-0001 tetap disimpan sebagai prosedur bila nanti dibutuhkan. |
-| 2 — Higienis repo | ✅ selesai | Lock file di-commit, partial backend config, provider v6.62.0, `use_lockfile`, tfvars.example, LICENSE, README Inggris + diagram Mermaid. |
-| 3 — CI/CD OIDC | 🟡 kode siap, belum di-apply | `global/github-oidc.tf` + 3 workflow tervalidasi dan berjalan. Job `plan`/`apply` sengaja *skipped* sampai role OIDC ada. Menunggu `terraform apply` di `global/`. |
-| 4 — Testing | 🟡 sebagian | 12 run / 18 assertion `.tftest.hcl` dengan `mock_provider` — tanpa kredensial, tanpa biaya. Modul web-app, serverless, data-lake, eks, kms belum punya test. |
-| 5 — Security | ✅ putaran pertama selesai | checkov **445 passed / 0 failed / 86 suppressed**, trivy 0, gitleaks bersih. Tiap suppression punya alasan tertulis di resource-nya. |
-| 6 — Flagship + live demo | ⬜ menunggu | Belum ada workload yang hidup. Ini sisa pekerjaan terbesar. |
-| 7 — Observability | ⬜ menunggu | Modul `observability` belum dibuat. |
-| 8 — Presentasi | 🟡 sebagian | README, ARCHITECTURE (4 diagram), 5 ADR, SECURITY.md, laporan scan, 16 commit Conventional. Belum ada screenshot, video demo, atau live URL. |
+| 0 — Toolchain & AWS | ✅ | Terraform 1.16.0 + tflint, checkov, trivy, terraform-docs, gitleaks, infracost. |
+| 1 — Brownfield import | ⬜ tidak berlaku | Account target tidak memuat resource `cloudops` apa pun. ADR-0001 disimpan sebagai prosedur bila nanti dibutuhkan. |
+| 2 — Higienis repo | ✅ | Lock file di-commit, partial backend config, provider v6.62.0, `use_lockfile`, LICENSE, README Inggris + diagram. |
+| 3 — CI/CD OIDC | ✅ | Berjalan sungguhan. Plan diposting ke PR, apply berhenti menunggu approval, nol access key. |
+| 4 — Testing | 🟡 | 12 run / 18 assertion untuk networking & database. Modul web-app, serverless, data-lake, eks, kms belum punya test. |
+| 5 — Security | ✅ putaran pertama | checkov 494/0/86, trivy 0, gitleaks bersih. |
+| 6 — Flagship + live demo | 🟡 | Endpoint serverless hidup dan bisa diklik. Pipeline data penuh (S3 → EventBridge → Glue → Athena) belum. |
+| 7 — Observability | ⬜ | Modul `observability` belum dibuat. |
+| 8 — Presentasi | 🟡 | README, ARCHITECTURE, TEARDOWN, 5 ADR, SECURITY, laporan scan, 24 commit. Belum ada screenshot atau video demo. |
 
-**Infrastruktur yang benar-benar hidup:** bucket state S3 (versioned, terenkripsi, TLS-only,
-`prevent_destroy`) berisi state `bootstrap`. Selain itu belum ada.
+**Hidup di AWS:** bucket state (CMK, versioned, TLS-only, `prevent_destroy`), VPC dev
+`10.10.0.0/16` dengan 4 subnet dan flow logs, 2 KMS key, dan endpoint serverless.
+Nol NAT Gateway, nol EKS, nol RDS, nol ALB. Sekitar **$2–3/bulan**, hampir seluruhnya KMS.
 
-**Blocker berikutnya:** `terraform apply` di `bootstrap/` (menambah CMK) lalu di `global/`
+**Catatan pengukuran CI.** Job `fmt / validate / lint`: 167 detik tanpa cache, 79 detik
+setelah `TF_PLUGIN_CACHE_DIR`, 77 detik dengan `actions/cache` hangat. Jadi seluruh
+penghematan datang dari berbagi direktori plugin **di dalam satu job**; menyimpannya
+antar-run praktis tidak berpengaruh, karena mengunggah dan mengunduh ~900 MB memakan
+waktu sebanding dengan yang dihemat. `actions/cache` dipertahankan untuk mengurangi
+ketergantungan pada registry Terraform, bukan demi kecepatan.
+
+**Berikutnya:** test untuk modul yang belum punya, modul observability, dan pipeline
+data penuh di atas endpoint yang sudah hidup.
 (budget + role OIDC). Setelah ARN role masuk sebagai repository variable, job `plan` berhenti
 di-skip dan CI menjadi bukti yang bisa ditunjukkan.
 
