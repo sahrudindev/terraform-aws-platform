@@ -22,13 +22,15 @@
 | 3 — CI/CD OIDC | ✅ | Berjalan sungguhan. Plan diposting ke PR, apply berhenti menunggu approval, nol access key. |
 | 4 — Testing | 🟡 | 12 run / 18 assertion untuk networking & database. Modul web-app, serverless, data-lake, eks, kms belum punya test. |
 | 5 — Security | ✅ putaran pertama | checkov 494/0/86, trivy 0, gitleaks bersih. |
-| 6 — Flagship + live demo | 🟡 | Endpoint serverless hidup dan bisa diklik. Pipeline data penuh (S3 → EventBridge → Glue → Athena) belum. |
+| 6 — Flagship + live demo | ⬜ dibongkar | Endpoint serverless sempat hidup dan terverifikasi, lalu sengaja dihancurkan bersama seluruh lingkungan. Buktinya ada di riwayat Actions dan commit `3caf5b6`. |
 | 7 — Observability | ⬜ | Modul `observability` belum dibuat. |
 | 8 — Presentasi | 🟡 | README, ARCHITECTURE, TEARDOWN, 5 ADR, SECURITY, laporan scan, 24 commit. Belum ada screenshot atau video demo. |
 
-**Hidup di AWS:** bucket state (CMK, versioned, TLS-only, `prevent_destroy`), VPC dev
-`10.10.0.0/16` dengan 4 subnet dan flow logs, 2 KMS key, dan endpoint serverless.
-Nol NAT Gateway, nol EKS, nol RDS, nol ALB. Sekitar **$2–3/bulan**, hampir seluruhnya KMS.
+**Hidup di AWS: nol.** Seluruh lingkungan dibongkar 27 Agustus 2026 — 50 resource di
+empat stack, hanya lewat `terraform destroy`. Dua KMS key berada dalam masa tunggu
+penghapusan sampai 3 September 2026 dan masih menagih ~$2/bulan selama itu; setelah
+lewat, biayanya nol. Akun ini juga memuat workload produksi yang tidak berhubungan,
+dan seluruhnya diverifikasi utuh sebelum dan sesudah pembongkaran.
 
 **Catatan pengukuran CI.** Job `fmt / validate / lint`: 167 detik tanpa cache, 79 detik
 setelah `TF_PLUGIN_CACHE_DIR`, 77 detik dengan `actions/cache` hangat. Jadi seluruh
