@@ -1,0 +1,2 @@
+# Copy to backend.hcl (gitignored) and replace with your own AWS account id.
+bucket = "cloudops-tfstate-<AWS_ACCOUNT_ID>"

@@ -1,0 +1,2 @@
+# Written automatically by `make bootstrap` from the stack's own output.
+bucket = "cloudops-tfstate-<AWS_ACCOUNT_ID>"
