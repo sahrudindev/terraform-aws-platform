@@ -67,6 +67,11 @@ module "serverless" {
   project     = var.project
   environment = var.environment
   kms_key_arn = module.kms.key_arn
+
+  environment_variables = {
+    ENVIRONMENT = var.environment
+    GIT_COMMIT  = var.git_commit
+  }
 }
 
 module "eks" {
