@@ -5,7 +5,7 @@
 >
 > | | |
 > |---|---|
-> | Repo | `github.com/sahrudindev/teraform_aws` (private → akan dipublikkan) |
+> | Repo | `github.com/sahrudindev/terraform-aws-platform` (private → akan dipublikkan) |
 > | Target peran | Cloud Engineer / Cloud Infrastructure Engineer / Platform Engineer |
 > | Target pasar | Indonesia + remote internasional (dokumen utama Bahasa Inggris) |
 > | Status audit | 27 Agustus 2026 |
@@ -368,7 +368,7 @@ Fase 7 dan 9 menyusul setelahnya.
 ## 6. Bentuk akhir repo
 
 ```
-teraform_aws/
+terraform-aws-platform/
 ├── README.md                    ← Inggris, diagram, badge, live demo URL
 ├── LICENSE  CODEOWNERS  .editorconfig  .terraform-version
 ├── .pre-commit-config.yaml  .tflint.hcl  .checkov.yaml  infracost.yml

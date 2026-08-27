@@ -9,7 +9,7 @@ alert_emails = ["you@example.com"]
 
 # GitHub Actions OIDC federation.
 github_owner = "sahrudindev"
-github_repo  = "teraform_aws"
+github_repo  = "terraform-aws-platform"
 
 # Same bucket you put in backend.hcl.
 state_bucket = "cloudops-tfstate-<AWS_ACCOUNT_ID>"

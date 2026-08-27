@@ -1,7 +1,7 @@
 # AWS Infrastructure as Code — Terraform
 
-[![terraform plan](https://github.com/sahrudindev/teraform_aws/actions/workflows/terraform-plan.yml/badge.svg)](https://github.com/sahrudindev/teraform_aws/actions/workflows/terraform-plan.yml)
-[![security](https://github.com/sahrudindev/teraform_aws/actions/workflows/security.yml/badge.svg)](https://github.com/sahrudindev/teraform_aws/actions/workflows/security.yml)
+[![terraform plan](https://github.com/sahrudindev/terraform-aws-platform/actions/workflows/terraform-plan.yml/badge.svg)](https://github.com/sahrudindev/terraform-aws-platform/actions/workflows/terraform-plan.yml)
+[![security](https://github.com/sahrudindev/terraform-aws-platform/actions/workflows/security.yml/badge.svg)](https://github.com/sahrudindev/terraform-aws-platform/actions/workflows/security.yml)
 [![Terraform](https://img.shields.io/badge/terraform-1.16.0-7B42BC)](.terraform-version)
 [![AWS Provider](https://img.shields.io/badge/aws%20provider-~%3E%206.0-FF9900)](environments/dev/versions.tf)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
