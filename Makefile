@@ -6,6 +6,11 @@ ENVS  := dev prod
 # Override per invocation: make bootstrap AWS_PROFILE=other
 AWS_PROFILE ?= cloudops
 export AWS_PROFILE
+
+# Terraform asks for confirmation before it changes anything, which is the right
+# default for a human at a terminal. Set AUTO_APPROVE=1 for non-interactive
+# runs - CI, or a shell with no TTY. Read the plan first either way.
+APPROVE := $(if $(AUTO_APPROVE),-auto-approve,)
 MODULES := $(wildcard modules/*/)
 
 .PHONY: help bootstrap fmt validate lint test security docs check clean
@@ -20,11 +25,11 @@ bootstrap: ## Create the state bucket, then move this stack's own state into it
 	if [ -f backend.tf ]; then \
 	  echo "--> backend already enabled; running apply against remote state"; \
 	  terraform init -backend-config=backend.hcl -input=false; \
-	  terraform apply -input=false; \
+	  terraform apply -input=false $(APPROVE); \
 	else \
 	  echo "--> step 1/3: creating the bucket with local state"; \
 	  terraform init -input=false; \
-	  terraform apply -input=false; \
+	  terraform apply -input=false $(APPROVE); \
 	  BUCKET=$$(terraform output -raw state_bucket); \
 	  echo "--> step 2/3: pointing every stack at $$BUCKET"; \
 	  echo "bucket = \"$$BUCKET\"" > backend.hcl; \
