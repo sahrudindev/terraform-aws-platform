@@ -13,6 +13,9 @@ locals {
 data "aws_caller_identity" "current" {}
 
 data "aws_iam_policy_document" "this" {
+  #checkov:skip=CKV_AWS_356:kms:* on "*" inside a key policy means "this key", not every key. AWS requires this root statement or the key becomes ungrantable through IAM.
+  #checkov:skip=CKV_AWS_109:Same statement. A key policy is scoped to the key it is attached to; the resource wildcard has no wider meaning here.
+  #checkov:skip=CKV_AWS_111:Same statement.
   # A key with no root statement cannot be granted to anyone via IAM, which
   # locks the account out of its own key.
   statement {

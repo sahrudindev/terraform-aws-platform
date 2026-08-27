@@ -45,6 +45,9 @@ resource "aws_vpc_security_group_ingress_rule" "db" {
 }
 
 resource "aws_db_instance" "this" {
+  #checkov:skip=CKV_AWS_157:multi_az defaults to true. Only dev opts out, and the lifecycle preconditions below make prod impossible to apply without it.
+  #checkov:skip=CKV_AWS_293:deletion_protection defaults to true. Same reasoning, enforced by the same preconditions.
+  #checkov:skip=CKV2_AWS_30:Query logging needs a custom parameter group, and log_statement=all on a production database writes every statement including their parameters. Enable deliberately, per environment, not by default.
   identifier = "${local.name}-db"
   engine     = var.engine
   # Major version only. Pinning the patch level turns every AWS-managed

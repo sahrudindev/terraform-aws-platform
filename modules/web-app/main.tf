@@ -11,6 +11,7 @@ data "aws_region" "current" {}
 
 # --- Security groups --------------------------------------------------------
 resource "aws_security_group" "alb" {
+  #checkov:skip=CKV_AWS_260:This is a public load balancer; accepting HTTP from the internet is its purpose. What matters is what sits behind it, which is a security group that accepts traffic from this one only.
   name_prefix = "${local.name}-alb-"
   description = "ALB ${local.name}"
   vpc_id      = var.vpc_id
@@ -62,6 +63,9 @@ resource "aws_security_group" "service" {
 
 # --- Application Load Balancer ----------------------------------------------
 resource "aws_lb" "this" {
+  #checkov:skip=CKV_AWS_150:Deletion protection is driven by var.enable_deletion_protection, which prod sets to true. Leaving dev disposable is deliberate.
+  #checkov:skip=CKV2_AWS_20:The HTTPS listener and redirect need an ACM certificate, which needs a domain this project does not own yet. Tracked in docs/SECURITY.md.
+  #checkov:skip=CKV2_AWS_28:WAFv2 managed rule groups cost roughly $10/month plus per-request charges, which is not justified while the target is a placeholder nginx image.
   name               = substr("${local.name}-alb", 0, 32)
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
@@ -89,6 +93,7 @@ resource "aws_lb" "this" {
 }
 
 resource "aws_lb_target_group" "this" {
+  #checkov:skip=CKV_AWS_378:ALB to target traffic stays inside the VPC between two security groups. Terminating TLS a second time at the task would need a certificate per task for no gain in this threat model.
   name        = substr("${local.name}-tg", 0, 32)
   port        = var.container_port
   protocol    = "HTTP"
@@ -106,6 +111,8 @@ resource "aws_lb_target_group" "this" {
 }
 
 resource "aws_lb_listener" "http" {
+  #checkov:skip=CKV_AWS_2:HTTPS requires an ACM certificate and therefore a domain. Tracked in docs/SECURITY.md.
+  #checkov:skip=CKV_AWS_103:A TLS policy only exists on an HTTPS listener. Resolved by the same certificate.
   load_balancer_arn = aws_lb.this.arn
   port              = 80
   protocol          = "HTTP"
@@ -125,6 +132,7 @@ resource "aws_ecs_cluster" "this" {
 }
 
 resource "aws_cloudwatch_log_group" "this" {
+  #checkov:skip=CKV_AWS_338:One year of retention is a cost decision, not a security one. These logs are read during an incident, which happens within days. Raise var.log_retention_days where a compliance regime actually requires it.
   name              = "/ecs/${local.name}"
   retention_in_days = var.log_retention_days
   kms_key_id        = var.kms_key_arn

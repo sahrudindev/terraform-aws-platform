@@ -30,6 +30,8 @@ resource "aws_iam_role_policy_attachment" "cluster" {
 }
 
 resource "aws_eks_cluster" "this" {
+  #checkov:skip=CKV_AWS_39:The public endpoint is controlled by var.endpoint_public_access, which prod sets to false. Dev keeps it reachable so kubectl works without a bastion.
+  #checkov:skip=CKV_AWS_38:var.public_access_cidrs narrows the endpoint where a stable egress address exists. The default stays open because a home connection has no fixed address, and prod closes the endpoint entirely instead.
   name     = "${local.name}-eks"
   role_arn = aws_iam_role.cluster.arn
   version  = var.kubernetes_version

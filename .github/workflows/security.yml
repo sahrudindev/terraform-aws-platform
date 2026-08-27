@@ -26,8 +26,13 @@ jobs:
           output_format: cli,sarif
           output_file_path: console,checkov.sarif
           soft_fail: false
-      - uses: github/codeql-action/upload-sarif@v3
+      # Uploading SARIF to the Security tab requires GitHub Advanced Security,
+      # which is not available on a private repository. The scan result is the
+      # gate; publishing it is a convenience, so a failure here must not fail
+      # the job. This starts working on its own once the repository is public.
+      - uses: github/codeql-action/upload-sarif@v4
         if: always()
+        continue-on-error: true
         with:
           sarif_file: checkov.sarif
           category: checkov
@@ -45,8 +50,9 @@ jobs:
           output: trivy.sarif
           exit-code: "1"
           severity: CRITICAL,HIGH
-      - uses: github/codeql-action/upload-sarif@v3
+      - uses: github/codeql-action/upload-sarif@v4
         if: always()
+        continue-on-error: true
         with:
           sarif_file: trivy.sarif
           category: trivy

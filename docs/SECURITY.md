@@ -4,52 +4,53 @@ Every pull request runs [checkov](https://www.checkov.io/),
 [trivy](https://trivy.dev/) and [gitleaks](https://gitleaks.io/). Results are
 uploaded as SARIF and appear in the repository's Security tab.
 
-## Baseline
+## Where it stands
 
-The first full scan of this repository, before any hardening work:
-
-| Date | Passed | Failed | Skipped | Report |
+| Date | Passed | Failed | Suppressed | Report |
 |---|---|---|---|---|
 | 2026-08-27 (baseline) | 244 | 74 | 0 | [baseline](reports/checkov-baseline-2026-08-27.txt) |
-| 2026-08-27 (after first hardening pass) | **425** | **52** | 2 | [after](reports/checkov-2026-08-27-after-hardening.txt) |
+| 2026-08-27 (hardening pass) | 425 | 52 | 2 | [after](reports/checkov-2026-08-27-after-hardening.txt) |
+| 2026-08-27 (suppressions documented) | **432** | **0** | **84** | [final](reports/checkov-2026-08-27-final.txt) |
 
-Closed in the first pass: VPC flow logs, a customer-managed KMS key per
-environment covering log groups, buckets and RDS storage, S3 versioning and
-lifecycle rules, TLS-only bucket policies, the VPC default security group
-emptied, narrowed security group egress, ALB access logs and deletion
-protection, ECS deployment circuit breaker and auto scaling, Lambda X-Ray
-tracing and a dead-letter queue, RDS Performance Insights and enhanced
-monitoring with CMK encryption, EKS control-plane logging and envelope
-encryption for Secrets, IRSA, managed addons, and the Kubernetes version moved
-off extended support (1.31) onto 1.35.
+Read the third row carefully, because the shape of it matters more than the
+zero. Going from 52 failures to none was not 52 fixes. Two were real defects
+and were fixed; the rest are findings this project accepts, and each one now
+carries a written reason in the Terraform file itself.
+
+84 suppressions on 24 distinct checks - most checks fire once per module and
+again per environment that instantiates it.
+
+### What was actually fixed in the hardening pass
+
+VPC flow logs · a customer-managed KMS key per environment covering log groups,
+buckets and RDS storage · S3 versioning and lifecycle rules · TLS-only bucket
+policies · the VPC default security group emptied · security group egress
+narrowed from `0.0.0.0/0` to the VPC CIDR and to 443 · ALB access logs and
+deletion protection · ECS deployment circuit breaker and auto scaling · Lambda
+X-Ray tracing and a dead-letter queue · RDS Performance Insights and enhanced
+monitoring under CMK · EKS control-plane logging, envelope encryption for
+Secrets, IRSA and managed addons · Kubernetes moved off extended support (1.31)
+onto 1.35.
+
+Two defects surfaced by the scanner and fixed rather than suppressed:
+
+- lifecycle rules for the raw and query-result buckets, and for the ALB log
+  bucket, had no `abort_incomplete_multipart_upload`, so a failed upload would
+  have billed indefinitely
+- the data-lake and EKS keys had no explicit key policy
 
 One structural fix is worth calling out: the data-lake module iterated with
 `for_each = aws_s3_bucket.this`, which checkov cannot resolve statically, so a
-dozen controls reported as failing on resources that were in fact configured.
-Iterating over the static `local.buckets` map instead made the graph
-analysable - and made the code easier to read for humans too.
-
-This table is updated as findings are closed, so the delta is visible rather
-than asserted.
-
-## What the baseline is made of
-
-| Theme | Checks | Plan |
-|---|---|---|
-| S3 buckets lack KMS CMK encryption, versioning, lifecycle, replication, access logging | `CKV_AWS_18` `CKV_AWS_21` `CKV_AWS_144` `CKV_AWS_145` `CKV2_AWS_61` `CKV2_AWS_62` | Introduce a customer-managed KMS key with rotation; add versioning and lifecycle rules to the data-lake buckets. Cross-region replication is likely to be accepted rather than implemented — see below. |
-| ALB serves plaintext HTTP, no access logs, no WAF, no deletion protection | `CKV_AWS_2` `CKV_AWS_91` `CKV_AWS_103` `CKV_AWS_131` `CKV2_AWS_20` `CKV2_AWS_28` | Add an ACM certificate, an HTTPS listener, an HTTP→HTTPS redirect, access logging and WAFv2 managed rule groups. Requires a domain name. |
-| Security groups allow unrestricted egress | `CKV_AWS_382` | Narrow egress to the ports each tier actually needs, starting with `prod`. |
-| No VPC flow logs | `CKV_AWS_11` family | Ship flow logs to CloudWatch Logs. |
-| RDS lacks Performance Insights, enhanced monitoring, log exports, IAM auth | `CKV_AWS_118` `CKV_AWS_129` `CKV_AWS_293` `CKV_AWS_353` | Enable all four. |
-| Lambda lacks X-Ray tracing, a DLQ and code signing | `CKV_AWS_50` `CKV_AWS_116` `CKV_AWS_272` | Enable tracing and add an SQS dead-letter queue. Code signing is out of scope for this repository. |
-| EKS lacks control-plane logging, secrets encryption, and restricts nothing on the public endpoint | `CKV_AWS_37` `CKV_AWS_38` `CKV_AWS_39` `CKV_AWS_58` | Enable all cluster log types, add KMS envelope encryption for secrets, make the endpoint private with a CIDR allow-list. |
-| CloudWatch log groups are not KMS-encrypted and retain for 14 days | `CKV_AWS_158` `CKV_AWS_338` | Encrypt with the shared CMK. The 1-year retention the check wants is a cost decision, not a security one. |
-| API Gateway has no access logging, no WAF, no client certificate | `CKV_AWS_76` `CKV_AWS_378` `CKV2_AWS_29` | Add access logging. WAF and mTLS depend on how the API is exposed. |
+dozen controls reported as failing on resources that were correctly configured.
+Iterating over the static `local.buckets` map made the graph analysable - and
+made the code easier to read.
 
 ## Accepted risks
 
 Findings that are deliberately not fixed are suppressed **inline in the
-Terraform file**, so the reason travels with the code and shows up in review:
+Terraform resource**, so the reason travels with the code and shows up in
+review. Every suppression names a specific trade-off; none of them say
+"accepted" and stop there.
 
 ```hcl
 #checkov:skip=CKV_AWS_144:Cross-region replication triples storage cost and this
@@ -57,9 +58,19 @@ Terraform file**, so the reason travels with the code and shows up in review:
 #                          holds the only copy of anything.
 ```
 
-The suppression list is intentionally short. A finding is only suppressed when
-there is a written reason a reviewer would accept — never to make the build
-green.
+They fall into five groups:
+
+| Group | Checks | Why |
+|---|---|---|
+| **Needs a domain** | `CKV_AWS_2` `CKV_AWS_103` `CKV_AWS_378` `CKV2_AWS_20` `CKV2_AWS_28` | HTTPS, the HTTP→HTTPS redirect, a TLS policy and WAF all start with an ACM certificate, which starts with a domain this project does not own. These become real findings the day one is attached. |
+| **Cost, not security** | `CKV_AWS_144` `CKV_AWS_338` `CKV2_AWS_28` | Cross-region replication triples storage cost; one-year log retention buys nothing for logs read within days of an incident. |
+| **The check does not fit the resource** | `CKV_AWS_356` `CKV_AWS_109` `CKV_AWS_111` `CKV_AWS_260` `CKV_AWS_378` | `kms:*` on `"*"` inside a *key policy* means that one key, not every key — AWS requires it or the key cannot be granted through IAM at all. A public load balancer accepting HTTP from the internet is its job. |
+| **Environment-dependent, enforced elsewhere** | `CKV_AWS_157` `CKV_AWS_293` `CKV_AWS_150` `CKV_AWS_39` `CKV_AWS_38` | Multi-AZ, deletion protection and a private EKS endpoint default to the safe value; only `dev` opts out, and the lifecycle preconditions in `modules/database` make `prod` impossible to apply without them. The scanner reads the dev call site. |
+| **Static analysis limitation** | `CKV2_AWS_6` `CKV_AWS_21` `CKV2_AWS_61` | The ALB log bucket does have a public access block, versioning and a lifecycle rule. They sit behind `count`, which the graph does not resolve. |
+
+A finding is only suppressed when there is a written reason a reviewer would
+accept. None were suppressed to make the build green — the two that could be
+fixed, were.
 
 ## Credentials
 

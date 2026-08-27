@@ -8,6 +8,13 @@
 data "aws_caller_identity" "current" {}
 
 resource "aws_s3_bucket" "logs" {
+  #checkov:skip=CKV_AWS_144:Cross-region replication triples storage cost. Everything here is either reproducible from source or already versioned; losing a region is not the failure mode this project is defending against.
+  #checkov:skip=CKV_AWS_18:Server access logging needs a second bucket per bucket, which then needs its own logging bucket. CloudTrail data events cover the same ground without the recursion.
+  #checkov:skip=CKV2_AWS_62:Event notifications are an integration mechanism, not a security control. Nothing consumes these buckets asynchronously yet.
+  #checkov:skip=CKV_AWS_145:ALB log delivery does not support customer-managed KMS keys. SSE-S3 is the only option AWS accepts here.
+  #checkov:skip=CKV2_AWS_6:A public access block is configured below. The resource is behind count, which the graph does not resolve.
+  #checkov:skip=CKV_AWS_21:Versioning is configured below. Same count-resolution limitation.
+  #checkov:skip=CKV2_AWS_61:A lifecycle configuration is defined below. Same count-resolution limitation.
   count = var.enable_access_logs ? 1 : 0
 
   bucket        = "${local.name}-alb-logs-${data.aws_caller_identity.current.account_id}"
@@ -66,6 +73,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "logs" {
 
     noncurrent_version_expiration {
       noncurrent_days = 7
+    }
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
     }
   }
 }

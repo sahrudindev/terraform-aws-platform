@@ -155,6 +155,9 @@ resource "aws_iam_role_policy_attachment" "apply_state" {
 # The roles and policies this repo creates for ECS tasks, Lambda, EKS nodes
 # and so on. Scoped by path so CI cannot touch unrelated identities.
 data "aws_iam_policy_document" "apply_iam" {
+  #checkov:skip=CKV_AWS_110:The actions listed are exactly what this repository needs to create the roles its workloads assume. IAM does not support resource-level constraints on CreateRole, and iam:PassRole is constrained by iam:PassedToService below so a role cannot be handed to an arbitrary principal. Reasoning in docs/adr/0002-ci-iam-permissions.md.
+  #checkov:skip=CKV_AWS_356:Same statement. Narrowing it means predicting every name_prefix this repository will ever generate.
+  #checkov:skip=CKV_AWS_109:Same statement. This role deliberately cannot create users, attach user policies, or modify its own trust policy.
   statement {
     sid = "ManageWorkloadIdentities"
     actions = [

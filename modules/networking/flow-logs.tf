@@ -6,6 +6,7 @@
 # ============================================================================
 
 resource "aws_cloudwatch_log_group" "flow" {
+  #checkov:skip=CKV_AWS_338:One year of retention is a cost decision, not a security one. These logs are read during an incident, which happens within days. Raise var.log_retention_days where a compliance regime actually requires it.
   count = var.enable_flow_logs ? 1 : 0
 
   name              = "/aws/vpc/${local.name}"

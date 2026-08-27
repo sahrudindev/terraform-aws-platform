@@ -38,6 +38,10 @@ locals {
 
 # --- S3 bucket: tempat menyimpan file terraform.tfstate -------------------
 resource "aws_s3_bucket" "state" {
+  #checkov:skip=CKV_AWS_144:Cross-region replication triples storage cost. Everything here is either reproducible from source or already versioned; losing a region is not the failure mode this project is defending against.
+  #checkov:skip=CKV_AWS_18:Server access logging needs a second bucket per bucket, which then needs its own logging bucket. CloudTrail data events cover the same ground without the recursion.
+  #checkov:skip=CKV2_AWS_62:Event notifications are an integration mechanism, not a security control. Nothing consumes these buckets asynchronously yet.
+  #checkov:skip=CKV_AWS_145:A CMK for the state bucket would have to exist before the bucket that stores the state describing it. SSE-S3 keeps the bootstrap acyclic; see docs/adr/0005-bootstrapping-the-state-backend.md.
   bucket = local.bucket_name
 
   # Destroying this bucket destroys the record of every other stack. Removing

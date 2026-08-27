@@ -6,9 +6,48 @@ locals {
   kms_key_arn = var.kms_key_arn != null ? var.kms_key_arn : aws_kms_key.this[0].arn
 }
 
+data "aws_iam_policy_document" "kms" {
+  #checkov:skip=CKV_AWS_356:kms:* on "*" inside a key policy means "this key", not every key. AWS requires this root statement or the key becomes ungrantable through IAM.
+  #checkov:skip=CKV_AWS_109:Same statement. A key policy is scoped to the key it is attached to; the resource wildcard has no wider meaning here.
+  #checkov:skip=CKV_AWS_111:Same statement.
+  count = var.kms_key_arn == null ? 1 : 0
+
+  # A key with no root statement cannot be granted through IAM at all, which
+  # locks the account out of its own key.
+  statement {
+    sid       = "EnableIAMPolicies"
+    actions   = ["kms:*"]
+    resources = ["*"]
+
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"]
+    }
+  }
+
+  statement {
+    sid     = "AllowS3AndAthena"
+    actions = ["kms:Encrypt", "kms:Decrypt", "kms:ReEncrypt*", "kms:GenerateDataKey*", "kms:DescribeKey"]
+
+    resources = ["*"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["s3.amazonaws.com", "athena.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+  }
+}
+
 resource "aws_kms_key" "this" {
   count = var.kms_key_arn == null ? 1 : 0
 
+  policy                  = data.aws_iam_policy_document.kms[0].json
   description             = "Encrypts the ${local.name} data lake buckets"
   enable_key_rotation     = true
   deletion_window_in_days = 30
@@ -69,6 +108,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
         days          = var.raw_transition_to_ia_days
         storage_class = "STANDARD_IA"
       }
+
+      abort_incomplete_multipart_upload {
+        days_after_initiation = 7
+      }
     }
   }
 
@@ -84,6 +127,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
 
       expiration {
         days = 30
+      }
+
+      abort_incomplete_multipart_upload {
+        days_after_initiation = 7
       }
     }
   }

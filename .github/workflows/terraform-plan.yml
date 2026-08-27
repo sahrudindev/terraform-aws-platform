@@ -81,6 +81,11 @@ jobs:
     name: plan (${{ matrix.env }})
     needs: [validate, test]
     runs-on: ubuntu-latest
+    # Skipped until the global stack has created the OIDC roles and their ARNs
+    # are set as repository variables. Without this the job fails on assume-role
+    # and reports a broken pipeline when the pipeline is merely unconfigured.
+    if: vars.AWS_PLAN_ROLE_ARN != '' && vars.AWS_STATE_BUCKET != ''
+
     strategy:
       fail-fast: false
       matrix:

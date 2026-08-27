@@ -4,7 +4,44 @@
 
 # Kubernetes Secrets are only base64 in etcd by default. This wraps them with a
 # customer-managed key so a snapshot of etcd is not a snapshot of every secret.
+data "aws_caller_identity" "current" {}
+
+data "aws_iam_policy_document" "kms" {
+  #checkov:skip=CKV_AWS_356:kms:* on "*" inside a key policy means "this key", not every key. AWS requires this root statement or the key becomes ungrantable through IAM.
+  #checkov:skip=CKV_AWS_109:Same statement. A key policy is scoped to the key it is attached to; the resource wildcard has no wider meaning here.
+  #checkov:skip=CKV_AWS_111:Same statement.
+  statement {
+    sid       = "EnableIAMPolicies"
+    actions   = ["kms:*"]
+    resources = ["*"]
+
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"]
+    }
+  }
+
+  statement {
+    sid     = "AllowEKSEnvelopeEncryption"
+    actions = ["kms:Encrypt", "kms:Decrypt", "kms:ReEncrypt*", "kms:GenerateDataKey*", "kms:DescribeKey", "kms:CreateGrant"]
+
+    resources = ["*"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["eks.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+  }
+}
+
 resource "aws_kms_key" "this" {
+  policy                  = data.aws_iam_policy_document.kms.json
   description             = "Envelope encryption for ${local.name}-eks secrets"
   enable_key_rotation     = true
   deletion_window_in_days = 30
@@ -20,6 +57,7 @@ resource "aws_kms_alias" "this" {
 # The cluster writes here as soon as logging is enabled; creating it up front
 # means retention and encryption are ours to set rather than defaulted.
 resource "aws_cloudwatch_log_group" "cluster" {
+  #checkov:skip=CKV_AWS_338:One year of retention is a cost decision, not a security one. These logs are read during an incident, which happens within days. Raise var.log_retention_days where a compliance regime actually requires it.
   name              = "/aws/eks/${local.name}-eks/cluster"
   retention_in_days = var.log_retention_days
   kms_key_id        = var.kms_key_arn

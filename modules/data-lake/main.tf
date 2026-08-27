@@ -17,6 +17,9 @@ locals {
 }
 
 resource "aws_s3_bucket" "this" {
+  #checkov:skip=CKV_AWS_144:Cross-region replication triples storage cost. Everything here is either reproducible from source or already versioned; losing a region is not the failure mode this project is defending against.
+  #checkov:skip=CKV_AWS_18:Server access logging needs a second bucket per bucket, which then needs its own logging bucket. CloudTrail data events cover the same ground without the recursion.
+  #checkov:skip=CKV2_AWS_62:Event notifications are an integration mechanism, not a security control. Nothing consumes these buckets asynchronously yet.
   for_each      = local.buckets
   bucket        = each.value
   force_destroy = var.force_destroy
