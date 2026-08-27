@@ -1,0 +1,18 @@
+# Copy to terraform.tfvars (gitignored) and adjust.
+project     = "cloudops"
+environment = "dev"
+region      = "ap-southeast-1"
+vpc_cidr    = "10.10.0.0/16"
+
+# NAT Gateway costs ~$32/month even when idle.
+# Only enable it once you actually run workloads in private subnets.
+enable_nat_gateway = false
+
+# Workload feature flags - turn on one at a time and check the cost impact.
+enable_web_app    = false
+enable_database   = false
+enable_serverless = false
+enable_data_lake  = false
+enable_eks        = false # EKS control plane is ~$73/month. Destroy when unused.
+
+db_instance_class = "db.t4g.micro"

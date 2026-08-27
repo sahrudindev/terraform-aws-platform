@@ -1,26 +1,45 @@
-# Terraform state — JANGAN PERNAH di-commit (berisi data sensitif)
+# --- Terraform state: never commit (contains sensitive values) --------------
 *.tfstate
 *.tfstate.*
 *.tfstate.backup
 
-# Direktori kerja & cache provider
+# --- Working dir & provider cache ------------------------------------------
 .terraform/
-.terraform.lock.hcl
 
-# Variabel berisi rahasia / nilai spesifik
+# NOTE: .terraform.lock.hcl is intentionally NOT ignored.
+# The dependency lock file MUST be committed so every developer and CI run
+# resolves the exact same provider versions and checksums.
+
+# --- Variable files (may contain account-specific or secret values) ---------
+# Committed counterparts live next to these as *.tfvars.example
 *.tfvars
 *.auto.tfvars
-!example.tfvars
 
-# Artefak build Lambda (dihasilkan otomatis)
+# --- Partial backend config (contains AWS account id) ----------------------
+# Committed counterpart: backend.hcl.example
+backend.hcl
+
+# Enabled locally by `make bootstrap`; the committed source is backend.tf.tpl
+bootstrap/backend.tf
+
+# --- Build artifacts -------------------------------------------------------
 **/build/
 *.zip
 
-# Crash log & rencana yang disimpan
+# --- Plans, crash logs, generated config -----------------------------------
 crash.log
 crash.*.log
 *.tfplan
+*.tfplan.json
+generated.tf
 
-# Kredensial
+# --- Downloaded AWS credential exports -------------------------------------
+# The IAM console hands these out as a .csv. They must never reach the repo.
+*accessKeys*.csv
+*accessKey*.csv
+*credentials*.csv
+new_user_credentials.csv
+
+# --- Credentials -----------------------------------------------------------
 .aws/
 *.pem

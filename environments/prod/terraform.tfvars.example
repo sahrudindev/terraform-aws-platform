@@ -1,0 +1,17 @@
+# Copy to terraform.tfvars (gitignored) and adjust.
+project     = "cloudops"
+environment = "prod"
+region      = "ap-southeast-1"
+vpc_cidr    = "10.20.0.0/16"
+
+# Production runs one NAT Gateway per AZ for availability.
+enable_nat_gateway = true
+single_nat_gateway = false
+
+enable_web_app    = false
+enable_database   = false
+enable_serverless = false
+enable_data_lake  = false
+enable_eks        = false
+
+db_instance_class = "db.t4g.small"

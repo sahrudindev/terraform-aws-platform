@@ -1,0 +1,15 @@
+# Copy to terraform.tfvars (gitignored) and fill in.
+project = "cloudops"
+
+# Monthly spend ceiling in USD. Alerts fire at 80% actual and 100% forecast.
+monthly_budget_usd = 20
+
+# REQUIRED - has no default. Cost alerts are delivered here.
+alert_emails = ["you@example.com"]
+
+# GitHub Actions OIDC federation.
+github_owner = "sahrudindev"
+github_repo  = "teraform_aws"
+
+# Same bucket you put in backend.hcl.
+state_bucket = "cloudops-tfstate-<AWS_ACCOUNT_ID>"
