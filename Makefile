@@ -1,6 +1,11 @@
 # Convenience targets. Everything here also runs in CI.
 SHELL := /bin/bash
 ENVS  := dev prod
+
+# Which AWS profile every target runs against.
+# Override per invocation: make bootstrap AWS_PROFILE=other
+AWS_PROFILE ?= cloudops
+export AWS_PROFILE
 MODULES := $(wildcard modules/*/)
 
 .PHONY: help bootstrap fmt validate lint test security docs check clean
