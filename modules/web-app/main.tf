@@ -23,10 +23,11 @@ resource "aws_security_group" "alb" {
     cidr_blocks = ["0.0.0.0/0"]
   }
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    description = "Forward to targets in the private subnets"
+    from_port   = var.container_port
+    to_port     = var.container_port
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
   }
   lifecycle { create_before_destroy = true }
   tags = { Name = "${local.name}-alb-sg" }
@@ -44,10 +45,15 @@ resource "aws_security_group" "service" {
     protocol        = "tcp"
     security_groups = [aws_security_group.alb.id]
   }
+  # Tasks need outbound HTTPS to pull images from ECR, reach Secrets Manager
+  # and ship logs. Narrowing this further requires VPC endpoints for each of
+  # those services.
+  #checkov:skip=CKV_AWS_382:Outbound HTTPS is required for ECR, Secrets Manager and CloudWatch. Replacing it with VPC endpoints is tracked as future work.
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
+    description = "Outbound HTTPS for image pulls, secrets and log delivery"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
   lifecycle { create_before_destroy = true }
@@ -60,7 +66,26 @@ resource "aws_lb" "this" {
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
   subnets            = var.public_subnet_ids
-  tags               = { Name = "${local.name}-alb" }
+
+  enable_deletion_protection = var.enable_deletion_protection
+
+  # Reject requests carrying headers the ALB cannot parse, rather than
+  # forwarding them for the application to misinterpret.
+  drop_invalid_header_fields = true
+
+  dynamic "access_logs" {
+    for_each = var.enable_access_logs ? [1] : []
+
+    content {
+      bucket  = aws_s3_bucket.logs[0].bucket
+      prefix  = "alb"
+      enabled = true
+    }
+  }
+
+  depends_on = [aws_s3_bucket_policy.logs]
+
+  tags = { Name = "${local.name}-alb" }
 }
 
 resource "aws_lb_target_group" "this" {
@@ -102,6 +127,7 @@ resource "aws_ecs_cluster" "this" {
 resource "aws_cloudwatch_log_group" "this" {
   name              = "/ecs/${local.name}"
   retention_in_days = var.log_retention_days
+  kms_key_id        = var.kms_key_arn
 }
 
 data "aws_iam_policy_document" "assume" {
@@ -147,7 +173,7 @@ resource "aws_ecs_task_definition" "this" {
       logDriver = "awslogs"
       options = {
         "awslogs-group"         = aws_cloudwatch_log_group.this.name
-        "awslogs-region"        = data.aws_region.current.name
+        "awslogs-region"        = data.aws_region.current.region
         "awslogs-stream-prefix" = "app"
       }
     }
@@ -160,6 +186,16 @@ resource "aws_ecs_service" "this" {
   task_definition = aws_ecs_task_definition.this.arn
   desired_count   = var.desired_count
   launch_type     = "FARGATE"
+
+  # A failing deployment rolls itself back instead of sitting half-broken.
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
+
+  # Lets `aws ecs execute-command` open a shell in a task for debugging,
+  # without an SSH path into the subnet.
+  enable_execute_command = true
 
   network_configuration {
     subnets          = var.private_subnet_ids
@@ -174,4 +210,9 @@ resource "aws_ecs_service" "this" {
   }
 
   depends_on = [aws_lb_listener.http]
+
+  # Auto scaling owns desired_count after the first deploy.
+  lifecycle {
+    ignore_changes = [desired_count]
+  }
 }
