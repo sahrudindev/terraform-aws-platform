@@ -13,3 +13,6 @@ github_repo  = "terraform-aws-platform"
 
 # Same bucket you put in backend.hcl.
 state_bucket = "cloudops-tfstate-<AWS_ACCOUNT_ID>"
+
+# From `terraform output state_kms_key_arn` in bootstrap/.
+state_kms_key_arn = "arn:aws:kms:ap-southeast-1:<AWS_ACCOUNT_ID>:key/<KEY_ID>"

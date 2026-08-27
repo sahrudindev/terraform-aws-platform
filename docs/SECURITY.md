@@ -10,14 +10,14 @@ uploaded as SARIF and appear in the repository's Security tab.
 |---|---|---|---|---|
 | 2026-08-27 (baseline) | 244 | 74 | 0 | [baseline](reports/checkov-baseline-2026-08-27.txt) |
 | 2026-08-27 (hardening pass) | 425 | 52 | 2 | [after](reports/checkov-2026-08-27-after-hardening.txt) |
-| 2026-08-27 (suppressions documented) | **432** | **0** | **84** | [final](reports/checkov-2026-08-27-final.txt) |
+| 2026-08-27 (suppressions documented) | **445** | **0** | **86** | [final](reports/checkov-2026-08-27-final.txt) |
 
 Read the third row carefully, because the shape of it matters more than the
 zero. Going from 52 failures to none was not 52 fixes. Two were real defects
 and were fixed; the rest are findings this project accepts, and each one now
 carries a written reason in the Terraform file itself.
 
-84 suppressions on 24 distinct checks - most checks fire once per module and
+86 suppressions on 24 distinct checks - most checks fire once per module and
 again per environment that instantiates it.
 
 ### What was actually fixed in the hardening pass
@@ -38,6 +38,14 @@ Two defects surfaced by the scanner and fixed rather than suppressed:
   bucket, had no `abort_incomplete_multipart_upload`, so a failed upload would
   have billed indefinitely
 - the data-lake and EKS keys had no explicit key policy
+- the state bucket used SSE-S3. This was first suppressed on the grounds that a
+  CMK would have to exist before the bucket holding the state that describes it.
+  That reasoning was wrong - both are created in the same apply, and nothing
+  reads state until after they exist. trivy flagged it independently of checkov,
+  which is the argument for running two scanners with different rule sets. The
+  bucket now uses a rotating CMK with an explicit key policy, and the CI roles
+  are granted `kms:Decrypt` on it, because bucket permissions alone stop working
+  the moment the objects are KMS-encrypted
 
 One structural fix is worth calling out: the data-lake module iterated with
 `for_each = aws_s3_bucket.this`, which checkov cannot resolve statically, so a

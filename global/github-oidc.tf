@@ -101,6 +101,22 @@ data "aws_iam_policy_document" "state_access" {
     ]
     resources = ["arn:aws:s3:::${var.state_bucket}/*"]
   }
+
+  # The state bucket is encrypted with a customer-managed key, so bucket
+  # permissions alone are not enough to read or write an object.
+  dynamic "statement" {
+    for_each = var.state_kms_key_arn != null ? [1] : []
+
+    content {
+      sid = "UseStateEncryptionKey"
+      actions = [
+        "kms:Decrypt",
+        "kms:GenerateDataKey",
+        "kms:DescribeKey",
+      ]
+      resources = [var.state_kms_key_arn]
+    }
+  }
 }
 
 resource "aws_iam_policy" "state_access" {

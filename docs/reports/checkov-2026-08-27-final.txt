@@ -1,5 +1,5 @@
 terraform scan results:
 
-Passed checks: 432, Failed checks: 0, Skipped checks: 84
+Passed checks: 445, Failed checks: 0, Skipped checks: 86
 
 

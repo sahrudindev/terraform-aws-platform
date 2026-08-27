@@ -36,3 +36,9 @@ variable "budget_tag_filter" {
   type        = string
   default     = "cloudops"
 }
+
+variable "state_kms_key_arn" {
+  description = "CMK encrypting the state bucket, from the bootstrap output of the same name. Without it the CI roles can reach the objects but not decrypt them."
+  type        = string
+  default     = null
+}
