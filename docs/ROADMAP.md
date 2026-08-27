@@ -16,17 +16,22 @@
 
 | Fase | Status | Catatan |
 |---|---|---|
-| 0 — Toolchain & AWS | 🟡 sebagian | Terraform 1.16.0, tflint, checkov, trivy, terraform-docs, gitleaks, infracost sudah terpasang di `~/.local/bin`. **Kredensial AWS masih kosong** — lihat `docs/SETUP-AWS-ACCESS.md`. |
-| 1 — Brownfield import | ⬜ menunggu | Terblokir sampai kredensial AWS aktif. ADR-0001 sudah ditulis sebagai rencana. |
-| 2 — Higienis repo | ✅ selesai | Lock file di-commit, partial backend config, provider v6.62.0, `use_lockfile`, tfvars.example, LICENSE, README Inggris + diagram. |
-| 3 — CI/CD OIDC | 🟡 kode siap | `global/github-oidc.tf` + 3 workflow sudah ditulis dan tervalidasi. Belum bisa di-apply (butuh AWS). |
-| 4 — Testing | 🟡 sebagian | 11 test `.tftest.hcl` dengan `mock_provider` (tanpa AWS, tanpa biaya) untuk networking & database. Modul lain menyusul. |
-| 5 — Security | 🟡 baseline | Baseline checkov terukur: **244 passed / 74 failed**. Rencana perbaikan di `docs/SECURITY.md`. |
-| 6 — Flagship | ⬜ menunggu | |
-| 7 — Observability | ⬜ menunggu | |
-| 8 — Presentasi | 🟡 sebagian | README, 5 ADR, SECURITY.md, laporan scan sudah ada. Diagram PNG & video demo menyusul. |
+| 0 — Toolchain & AWS | ✅ selesai | Terraform 1.16.0 + tflint, checkov, trivy, terraform-docs, gitleaks, infracost di `~/.local/bin`. Profile `cloudops` aktif terhadap account produksi. |
+| 1 — Brownfield import | ⬜ tidak berlaku | Account target ternyata tidak memuat resource `cloudops` apa pun, jadi tidak ada yang perlu di-import. ADR-0001 tetap disimpan sebagai prosedur bila nanti dibutuhkan. |
+| 2 — Higienis repo | ✅ selesai | Lock file di-commit, partial backend config, provider v6.62.0, `use_lockfile`, tfvars.example, LICENSE, README Inggris + diagram Mermaid. |
+| 3 — CI/CD OIDC | 🟡 kode siap, belum di-apply | `global/github-oidc.tf` + 3 workflow tervalidasi dan berjalan. Job `plan`/`apply` sengaja *skipped* sampai role OIDC ada. Menunggu `terraform apply` di `global/`. |
+| 4 — Testing | 🟡 sebagian | 12 run / 18 assertion `.tftest.hcl` dengan `mock_provider` — tanpa kredensial, tanpa biaya. Modul web-app, serverless, data-lake, eks, kms belum punya test. |
+| 5 — Security | ✅ putaran pertama selesai | checkov **445 passed / 0 failed / 86 suppressed**, trivy 0, gitleaks bersih. Tiap suppression punya alasan tertulis di resource-nya. |
+| 6 — Flagship + live demo | ⬜ menunggu | Belum ada workload yang hidup. Ini sisa pekerjaan terbesar. |
+| 7 — Observability | ⬜ menunggu | Modul `observability` belum dibuat. |
+| 8 — Presentasi | 🟡 sebagian | README, ARCHITECTURE (4 diagram), 5 ADR, SECURITY.md, laporan scan, 16 commit Conventional. Belum ada screenshot, video demo, atau live URL. |
 
-**Blocker tunggal saat ini:** kredensial AWS. Semua yang tidak membutuhkannya sudah dikerjakan.
+**Infrastruktur yang benar-benar hidup:** bucket state S3 (versioned, terenkripsi, TLS-only,
+`prevent_destroy`) berisi state `bootstrap`. Selain itu belum ada.
+
+**Blocker berikutnya:** `terraform apply` di `bootstrap/` (menambah CMK) lalu di `global/`
+(budget + role OIDC). Setelah ARN role masuk sebagai repository variable, job `plan` berhenti
+di-skip dan CI menjadi bukti yang bisa ditunjukkan.
 
 ---
 
