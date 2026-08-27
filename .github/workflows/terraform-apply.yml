@@ -32,6 +32,10 @@ jobs:
   apply:
     name: apply (${{ github.event.inputs.environment || 'dev' }})
     runs-on: ubuntu-latest
+    # Skipped until the global stack has created the OIDC roles and their ARNs
+    # are set as repository variables. An unconfigured pipeline should read as
+    # unconfigured, not as broken.
+    if: vars.AWS_APPLY_ROLE_ARN != '' && vars.AWS_STATE_BUCKET != ''
     # The GitHub Environment carries a required-reviewer rule, so an apply
     # pauses here until a human approves it.
     environment: ${{ github.event.inputs.environment || 'dev' }}
