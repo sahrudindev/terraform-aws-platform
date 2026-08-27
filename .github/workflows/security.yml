@@ -68,7 +68,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          # Full history: a secret that was committed and later removed is still
+          # a leaked secret.
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
+
+      # Run the binary rather than gitleaks-action. The action calls the GitHub
+      # API to post findings on the pull request, which needs pull-requests
+      # write and fails with "Resource not accessible by integration" without
+      # it. It also scans only the commits in the pull request, where this scans
+      # every commit. Running the released binary means CI and `make security`
+      # execute the same command against the same version.
+      - name: gitleaks
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_VERSION: 8.30.1
+        run: |
+          set -euo pipefail
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar xz gitleaks
+          ./gitleaks version
+          ./gitleaks detect --no-banner --redact --exit-code 1
