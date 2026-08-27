@@ -1,0 +1,8 @@
+# Accepted findings, with the reason attached. Mirrors the inline
+# #checkov:skip comments in the Terraform files - two scanners, one policy.
+misconfigurations:
+  - id: AWS-0089
+    statement: >-
+      S3 server access logging needs a second bucket per bucket, which then
+      needs a logging bucket of its own. CloudTrail data events cover the same
+      ground without the recursion. Same decision as CKV_AWS_18.

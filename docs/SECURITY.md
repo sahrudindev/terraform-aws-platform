@@ -4,6 +4,12 @@ Every pull request runs [checkov](https://www.checkov.io/),
 [trivy](https://trivy.dev/) and [gitleaks](https://gitleaks.io/). Results are
 uploaded as SARIF and appear in the repository's Security tab.
 
+Two misconfiguration scanners rather than one, because their rule sets do not
+overlap completely. trivy caught the state bucket using SSE-S3 after checkov had
+already passed on it — see below. Accepted findings are recorded in both places:
+inline `#checkov:skip` comments in the resource, and `.trivyignore.yaml` with
+the same reasoning.
+
 ## Where it stands
 
 | Date | Passed | Failed | Suppressed | Report |
