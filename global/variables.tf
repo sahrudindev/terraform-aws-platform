@@ -30,3 +30,9 @@ variable "state_bucket" {
   description = "S3 bucket holding Terraform state; the CI roles need access to it"
   type        = string
 }
+
+variable "budget_tag_filter" {
+  description = "Only count spend tagged Project=<this>. Null makes the budget account-wide, which is wrong in any account that hosts more than this repository."
+  type        = string
+  default     = "cloudops"
+}
